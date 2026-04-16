@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  athlete
+  organizer
+}
+
+enum FacilityStatus {
+  active
+  inactive
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  cancelled
+  completed
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  avatar       String?
+  phone        String?
+  role         Role     @default(athlete)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  facilities Facility[] @relation("OwnerFacilities")
+  bookings   Booking[]
+  favorites  Favorite[]
+  reviews    Review[]
+}
+
+model Facility {
+  id              String         @id @default(cuid())
+  ownerId         String
+  owner           User           @relation("OwnerFacilities", fields: [ownerId], references: [id], onDelete: Cascade)
+  name            String
+  sport           String
+  city            String
+  district        String
+  address         String
+  description     String         @default("")
+  pricePerHour    Int
+  openTime        String         @default("08:00")
+  closeTime       String         @default("22:00")
+  status          FacilityStatus @default(active)
+
+  isApproved      Boolean        @default(false)
+  approvedAt      DateTime?
+  approvedBy      String?
+  rejectionReason String?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  photos     FacilityPhoto[]
+  bookings   Booking[]
+  favorites  Favorite[]
+  reviews    Review[]
+  moderationLogs ModerationLog[]
+
+  @@index([city, sport])
+  @@index([isApproved, status])
+}
+
+model FacilityPhoto {
+  id         String   @id @default(cuid())
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  url        String
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+}
+
+model Booking {
+  id         String        @id @default(cuid())
+  userId     String?
+  user       User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  facilityId String
+  facility   Facility      @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  date       String
+  startTime  String
+  endTime    String
+  status     BookingStatus @default(confirmed)
+  totalPrice Int
+  guestName  String?
+  guestPhone String?
+  createdBy  String        @default("athlete")
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@unique([facilityId, date, startTime])
+  @@index([userId])
+  @@index([facilityId, date])
+}
+
+model Favorite {
+  userId     String
+  facilityId String
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@id([userId, facilityId])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  rating     Int
+  text       String
+  createdAt  DateTime @default(now())
+
+  @@index([facilityId])
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  email     String
+  codeHash  String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email, used])
+}
+
+model ModerationLog {
+  id         String   @id @default(cuid())
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  action     String
+  actor      String
+  reason     String?
+  createdAt  DateTime @default(now())
+}

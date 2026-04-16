@@ -1,0 +1,20 @@
+import 'dotenv/config';
+import { createApp } from './app.js';
+import { prisma } from './prisma.js';
+
+const port = Number(process.env.PORT) || 4000;
+const app = createApp();
+
+const server = app.listen(port, () => {
+  console.log(`[bronisport-api] listening on http://localhost:${port}`);
+});
+
+const shutdown = async (signal) => {
+  console.log(`[bronisport-api] ${signal} received, shutting down...`);
+  server.close(() => console.log('[bronisport-api] http server closed'));
+  await prisma.$disconnect();
+  process.exit(0);
+};
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));

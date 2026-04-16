@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+dist
+.git
+.gitignore
+.env
+.env.local
+.DS_Store
+.vscode
+.idea
+.claude
+.dev-logs
+backend
+coverage
+build
+yarn-error.log
+*.log

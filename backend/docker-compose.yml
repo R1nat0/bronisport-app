@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bronisport_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bronisport
+      POSTGRES_PASSWORD: bronisport
+      POSTGRES_DB: bronisport
+    ports:
+      - "5500:5432"
+    volumes:
+      - bronisport_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bronisport -d bronisport"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  bronisport_pgdata:
