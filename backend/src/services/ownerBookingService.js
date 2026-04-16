@@ -9,32 +9,30 @@ function formatHhmm(mins) {
   return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
 }
 
-export async function createOwnerBooking(ownerId, { facilityId, date, startTime, duration = 1, guestName, guestPhone }) {
-  const facility = await prisma.facility.findUnique({
-    where: { id: facilityId },
-    select: { id: true, ownerId: true, openTime: true, closeTime: true, pricePerHour: true, status: true },
+export async function createOwnerBooking(ownerId, { courtId, date, startTime, duration = 1, guestName, guestPhone }) {
+  const court = await prisma.court.findUnique({
+    where: { id: courtId },
+    include: {
+      facility: { select: { id: true, ownerId: true, openTime: true, closeTime: true, pricePerHour: true } },
+    },
   });
-  if (!facility) throw notFound('Facility not found');
-  if (facility.ownerId !== ownerId) throw forbidden('Not your facility');
+  if (!court) throw notFound('Court not found');
+  if (court.facility.ownerId !== ownerId) throw forbidden('Not your facility');
 
-  if (duration < 1 || duration > 4 || !Number.isInteger(duration)) {
-    throw badRequest('duration must be 1–4');
-  }
+  const { facility } = court;
+  if (duration < 1 || duration > 4 || !Number.isInteger(duration)) throw badRequest('duration must be 1–4');
 
   const startMin = parseHhmm(startTime);
   const endMin = startMin + duration * 60;
   const openMin = parseHhmm(facility.openTime);
   const closeMin = parseHhmm(facility.closeTime);
 
-  if (startMin < openMin || endMin > closeMin) {
-    throw badRequest(`Time outside working hours (${facility.openTime}–${facility.closeTime})`);
-  }
+  if (startMin < openMin || endMin > closeMin) throw badRequest(`Time outside working hours`);
   if (startMin % 60 !== 0) throw badRequest('startTime must be on the hour');
 
-  const bookingDate = new Date(`${date}T${startTime}:00`);
   const maxDate = new Date();
   maxDate.setDate(maxDate.getDate() + 14);
-  if (bookingDate.getTime() > maxDate.getTime()) {
+  if (new Date(`${date}T${startTime}:00`).getTime() > maxDate.getTime()) {
     throw badRequest('Cannot book more than 2 weeks ahead');
   }
 
@@ -42,7 +40,7 @@ export async function createOwnerBooking(ownerId, { facilityId, date, startTime,
 
   const overlapping = await prisma.booking.count({
     where: {
-      facilityId, date,
+      courtId, date,
       status: { in: ['pending', 'confirmed'] },
       NOT: { OR: [{ startTime: { gte: endTime } }, { endTime: { lte: startTime } }] },
     },
@@ -51,7 +49,9 @@ export async function createOwnerBooking(ownerId, { facilityId, date, startTime,
 
   return prisma.booking.create({
     data: {
-      facilityId, date, startTime, endTime,
+      facilityId: facility.id,
+      courtId,
+      date, startTime, endTime,
       status: 'confirmed',
       totalPrice: facility.pricePerHour * duration,
       guestName: guestName || null,
@@ -60,6 +60,7 @@ export async function createOwnerBooking(ownerId, { facilityId, date, startTime,
     },
     include: {
       facility: { select: { id: true, name: true } },
+      court: { select: { id: true, name: true } },
     },
   });
 }
@@ -70,10 +71,7 @@ export async function listOwnerBookings(ownerId, { facilityId, status, from, to 
     ...(facilityId && { facilityId }),
     ...(status && { status }),
     ...((from || to) && {
-      date: {
-        ...(from && { gte: from }),
-        ...(to && { lte: to }),
-      },
+      date: { ...(from && { gte: from }), ...(to && { lte: to }) },
     }),
   };
   return prisma.booking.findMany({
@@ -81,6 +79,7 @@ export async function listOwnerBookings(ownerId, { facilityId, status, from, to 
     include: {
       user: { select: { id: true, name: true, email: true, avatar: true } },
       facility: { select: { id: true, name: true } },
+      court: { select: { id: true, name: true } },
     },
     orderBy: [{ date: 'desc' }, { startTime: 'desc' }],
   });
@@ -113,6 +112,7 @@ export async function updateBookingStatus(ownerId, bookingId, nextStatus) {
     include: {
       user: { select: { id: true, name: true, email: true } },
       facility: { select: { id: true, name: true } },
+      court: { select: { id: true, name: true } },
     },
   });
 }

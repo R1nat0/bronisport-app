@@ -7,28 +7,6 @@ function publicFacility(f) {
   return rest;
 }
 
-async function withAggregates(facilities) {
-  if (facilities.length === 0) return [];
-  const ids = facilities.map((f) => f.id);
-
-  const ratings = await prisma.review.groupBy({
-    by: ['facilityId'],
-    where: { facilityId: { in: ids } },
-    _avg: { rating: true },
-    _count: { rating: true },
-  });
-  const ratingMap = new Map(ratings.map((r) => [r.facilityId, r]));
-
-  return facilities.map((f) => {
-    const r = ratingMap.get(f.id);
-    return {
-      ...f,
-      rating: r?._avg.rating ? Number(r._avg.rating.toFixed(2)) : null,
-      reviewsCount: r?._count.rating ?? 0,
-    };
-  });
-}
-
 export async function listFacilities({ city, sport, district, minPrice, maxPrice, search, page, limit }) {
   const where = {
     isApproved: true,
@@ -55,16 +33,18 @@ export async function listFacilities({ city, sport, district, minPrice, maxPrice
     prisma.facility.count({ where }),
     prisma.facility.findMany({
       where,
-      include: { photos: { orderBy: { order: 'asc' } } },
+      include: {
+        photos: { orderBy: { order: 'asc' } },
+        courts: { select: { id: true, name: true }, orderBy: { createdAt: 'asc' } },
+      },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
     }),
   ]);
 
-  const enriched = await withAggregates(rows);
   return {
-    items: enriched.map(publicFacility),
+    items: rows.map((f) => ({ ...publicFacility(f), courtsCount: f.courts?.length ?? 0 })),
     total,
     page,
     limit,
@@ -77,18 +57,12 @@ export async function getFacilityById(id) {
     where: { id, isApproved: true, status: 'active' },
     include: {
       photos: { orderBy: { order: 'asc' } },
-      reviews: {
-        include: { user: { select: { id: true, name: true, avatar: true } } },
-        orderBy: { createdAt: 'desc' },
-        take: 20,
-      },
+      courts: { select: { id: true, name: true }, orderBy: { createdAt: 'asc' } },
       owner: { select: { id: true, name: true } },
     },
   });
   if (!facility) throw notFound('Facility not found');
-
-  const [enriched] = await withAggregates([facility]);
-  return publicFacility(enriched);
+  return publicFacility(facility);
 }
 
 function isValidDateYmd(s) {
@@ -106,25 +80,28 @@ function formatHhmm(mins) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-/**
- * Вычисляем часовые слоты на дату из openTime/closeTime минус занятые брони.
- * Возвращает массив { time, available }.
- */
-export async function getFacilitySlots(id, date) {
+export async function getCourtSlots(courtId, date) {
   if (!isValidDateYmd(date)) throw notFound('Invalid date');
 
-  const facility = await prisma.facility.findFirst({
-    where: { id, isApproved: true, status: 'active' },
-    select: { id: true, openTime: true, closeTime: true, pricePerHour: true },
+  const court = await prisma.court.findUnique({
+    where: { id: courtId },
+    include: {
+      facility: {
+        select: { id: true, openTime: true, closeTime: true, pricePerHour: true, isApproved: true, status: true },
+      },
+    },
   });
-  if (!facility) throw notFound('Facility not found');
+  if (!court || !court.facility.isApproved || court.facility.status !== 'active') {
+    throw notFound('Court not found');
+  }
 
-  const openMin = parseHhmm(facility.openTime);
-  const closeMin = parseHhmm(facility.closeTime);
+  const { openTime, closeTime, pricePerHour } = court.facility;
+  const openMin = parseHhmm(openTime);
+  const closeMin = parseHhmm(closeTime);
 
   const bookings = await prisma.booking.findMany({
     where: {
-      facilityId: id,
+      courtId,
       date,
       status: { in: ['pending', 'confirmed'] },
     },
@@ -149,10 +126,5 @@ export async function getFacilitySlots(id, date) {
     slots.push({ time, available: !inPast && !isSlotTaken(t) });
   }
 
-  return {
-    facilityId: id,
-    date,
-    pricePerHour: facility.pricePerHour,
-    slots,
-  };
+  return { courtId, facilityId: court.facilityId, date, pricePerHour, slots };
 }

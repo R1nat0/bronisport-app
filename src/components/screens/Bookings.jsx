@@ -11,15 +11,15 @@ import { formatPrice } from '../../utils/formatters.js';
 
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
-  const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Мая', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+  const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
   return `${d.getDate()} ${months[d.getMonth()]}`;
 }
 
 const STATUS_CONFIG = {
   confirmed: { label: 'Подтверждено', icon: 'check_circle', bg: 'bg-primary-fixed/20', text: 'text-primary' },
-  pending: { label: 'Ожидает', icon: 'schedule', bg: 'bg-yellow-100', text: 'text-yellow-700' },
+  pending: { label: 'Ожидает', icon: 'schedule', bg: 'bg-secondary/10', text: 'text-secondary' },
   completed: { label: 'Завершено', icon: 'task_alt', bg: 'bg-surface-container-high', text: 'text-on-surface' },
-  cancelled: { label: 'Отменено', icon: 'cancel', bg: 'bg-red-50', text: 'text-red-600' },
+  cancelled: { label: 'Отменено', icon: 'cancel', bg: 'bg-surface-container-high', text: 'text-on-surface-variant' },
 };
 
 function StatusBadge({ status }) {
@@ -59,7 +59,7 @@ const Bookings = () => {
       <AuthRequired
         icon="calendar_today"
         title="Ваши брони"
-        description="Войдите чтобы просмотреть забронированные площадки и управлять бронями."
+        description="Войдите, чтобы просмотреть забронированные клубы и управлять бронями."
         buttonText="Войти"
       />
     );
@@ -138,7 +138,7 @@ const Bookings = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start gap-2 mb-1">
                         <h3 className="text-base font-bold text-primary font-headline truncate">
-                          {b.facility?.name ?? 'Площадка'}
+                          {b.facility?.name ?? 'Клуб'}{b.court?.name ? ` — ${b.court.name}` : ''}
                         </h3>
                         <StatusBadge status={b.status} />
                       </div>
@@ -188,7 +188,7 @@ const Bookings = () => {
             </h3>
             <p className="text-on-surface-variant text-sm mb-8 max-w-sm mx-auto">
               {activeTab === 'active'
-                ? 'Исследуйте площадки города и забронируйте тренировку'
+                ? 'Исследуйте клубы города и забронируйте тренировку'
                 : 'Завершённые и отменённые брони появятся здесь'}
             </p>
             {activeTab === 'active' && (
@@ -196,7 +196,7 @@ const Bookings = () => {
                 to="/"
                 className="inline-block px-8 py-3 bg-primary-fixed text-on-primary-fixed rounded-xl font-bold hover:opacity-90 transition-colors text-sm"
               >
-                Найти площадку
+                Найти клуб
               </Link>
             )}
           </div>

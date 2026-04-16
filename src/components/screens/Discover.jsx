@@ -54,7 +54,7 @@ const Discover = () => {
 
   return (
     <div className="min-h-screen bg-surface pb-24">
-      <Header title="Найди свою" highlightText="площадку" />
+      <Header title="Найди свой" highlightText="клуб" />
 
       <section className="px-4 pt-4 pb-6 space-y-4">
         <CustomSelect
@@ -105,7 +105,7 @@ const Discover = () => {
       <section className="mt-8">
         <div className="px-4 mb-4">
           <h2 className="text-xl font-extrabold tracking-tight text-primary font-headline">
-            {selectedCity ? `Площадки — ${selectedCity}` : 'Все площадки'}
+            {selectedCity ? `Клубы — ${selectedCity}` : 'Все клубы'}
           </h2>
         </div>
 
@@ -113,7 +113,7 @@ const Discover = () => {
           <div className="px-4 text-center py-12 text-on-surface-variant">Загрузка…</div>
         ) : isError ? (
           <div className="px-4 text-center py-12 text-red-600 text-sm">
-            Не удалось загрузить площадки
+            Не удалось загрузить клубы
           </div>
         ) : facilities.length > 0 ? (
           <div className="space-y-4 px-4">
@@ -138,7 +138,7 @@ const Discover = () => {
             <div className="flex items-center gap-2 mb-3">
               <span className="material-symbols-outlined text-primary text-2xl">storefront</span>
               <h2 className="text-lg font-bold text-on-surface font-headline">
-                Сдавайте площадку
+                Сдавайте клуб
               </h2>
             </div>
             <p className="text-on-surface-variant text-sm mb-4">

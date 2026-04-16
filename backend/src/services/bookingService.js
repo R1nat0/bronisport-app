@@ -19,27 +19,24 @@ function bookingDateTime(date, time) {
   return new Date(`${date}T${time}:00`);
 }
 
-export async function createBooking({ userId, facilityId, date, startTime, duration = 1 }) {
+export async function createBooking({ userId, courtId, date, startTime, duration = 1 }) {
   if (duration < 1 || duration > 4 || !Number.isInteger(duration)) {
     throw badRequest('duration must be 1–4 hours');
   }
 
-  const facility = await prisma.facility.findUnique({
-    where: { id: facilityId },
-    select: {
-      id: true,
-      isApproved: true,
-      status: true,
-      openTime: true,
-      closeTime: true,
-      pricePerHour: true,
+  const court = await prisma.court.findUnique({
+    where: { id: courtId },
+    include: {
+      facility: {
+        select: { id: true, isApproved: true, status: true, openTime: true, closeTime: true, pricePerHour: true },
+      },
     },
   });
-
-  if (!facility || !facility.isApproved || facility.status !== 'active') {
-    throw notFound('Facility not found');
+  if (!court || !court.facility.isApproved || court.facility.status !== 'active') {
+    throw notFound('Court not found');
   }
 
+  const { facility } = court;
   const startMin = parseHhmm(startTime);
   const endMin = startMin + duration * 60;
   const openMin = parseHhmm(facility.openTime);
@@ -48,34 +45,23 @@ export async function createBooking({ userId, facilityId, date, startTime, durat
   if (startMin < openMin || endMin > closeMin) {
     throw badRequest(`Time outside working hours (${facility.openTime}–${facility.closeTime})`);
   }
-  if (startMin % 60 !== 0) {
-    throw badRequest('startTime must be on the hour (e.g. 14:00)');
-  }
+  if (startMin % 60 !== 0) throw badRequest('startTime must be on the hour');
 
   const start = bookingDateTime(date, startTime);
   if (Number.isNaN(start.getTime())) throw badRequest('Invalid date/time');
-  if (start.getTime() < Date.now()) {
-    throw badRequest('Cannot book in the past');
-  }
+  if (start.getTime() < Date.now()) throw badRequest('Cannot book in the past');
   const maxDate = new Date();
   maxDate.setDate(maxDate.getDate() + 14);
-  if (start.getTime() > maxDate.getTime()) {
-    throw badRequest('Cannot book more than 2 weeks ahead');
-  }
+  if (start.getTime() > maxDate.getTime()) throw badRequest('Cannot book more than 2 weeks ahead');
 
   const endTime = formatHhmm(endMin);
 
   const overlapping = await prisma.booking.count({
     where: {
-      facilityId,
+      courtId,
       date,
       status: { in: ['pending', 'confirmed'] },
-      NOT: {
-        OR: [
-          { startTime: { gte: endTime } },
-          { endTime: { lte: startTime } },
-        ],
-      },
+      NOT: { OR: [{ startTime: { gte: endTime } }, { endTime: { lte: startTime } }] },
     },
   });
   if (overlapping > 0) throw conflict('One or more slots already booked');
@@ -84,7 +70,8 @@ export async function createBooking({ userId, facilityId, date, startTime, durat
     return await prisma.booking.create({
       data: {
         userId,
-        facilityId,
+        facilityId: facility.id,
+        courtId,
         date,
         startTime,
         endTime,
@@ -93,6 +80,7 @@ export async function createBooking({ userId, facilityId, date, startTime, durat
       },
       include: {
         facility: { select: { id: true, name: true, city: true, address: true } },
+        court: { select: { id: true, name: true } },
       },
     });
   } catch (err) {
@@ -110,13 +98,11 @@ export async function listMyBookings({ userId, status }) {
     include: {
       facility: {
         select: {
-          id: true,
-          name: true,
-          city: true,
-          address: true,
+          id: true, name: true, city: true, address: true,
           photos: { orderBy: { order: 'asc' }, take: 1, select: { url: true } },
         },
       },
+      court: { select: { id: true, name: true } },
     },
     orderBy: [{ date: 'desc' }, { startTime: 'desc' }],
   });

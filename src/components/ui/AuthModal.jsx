@@ -126,7 +126,7 @@ const AuthModal = ({ isOpen, onClose, preSelectedRole = 'athlete', preSelectedMo
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[9998]" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/20 backdrop-blur-[20px] z-[9998]" onClick={onClose} />
 
       <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
@@ -253,7 +253,7 @@ const AuthModal = ({ isOpen, onClose, preSelectedRole = 'athlete', preSelectedMo
                   </button>
                 </div>
 
-                {!isRegister && (
+                {!isRegister && import.meta.env.DEV && (
                   <div className="text-xs text-on-surface-variant bg-surface-container-low rounded-xl p-3 leading-relaxed">
                     <div className="font-bold text-on-surface mb-1">Демо-аккаунты:</div>
                     <div>athlete@example.com / password123</div>

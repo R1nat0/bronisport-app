@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { api } from '../client.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 
@@ -7,6 +7,7 @@ export function useMyFacilities() {
   return useQuery({
     queryKey: ['owner', 'facilities'],
     enabled: isOwner,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const { data } = await api.get('/owner/facilities');
       return data;
@@ -90,8 +91,41 @@ export function useCreateOwnerBooking() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['owner', 'bookings'] });
       qc.invalidateQueries({ queryKey: ['owner', 'stats'] });
-      qc.invalidateQueries({ queryKey: ['facility'] });
+      qc.invalidateQueries({ queryKey: ['court'] });
     },
+  });
+}
+
+export function useAddCourt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ facilityId, name }) => {
+      const { data } = await api.post(`/owner/facilities/${facilityId}/courts`, { name });
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner', 'facilities'] }),
+  });
+}
+
+export function useRenameCourt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ courtId, name }) => {
+      const { data } = await api.patch(`/owner/courts/${courtId}`, { name });
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner', 'facilities'] }),
+  });
+}
+
+export function useDeleteCourt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (courtId) => {
+      const { data } = await api.delete(`/owner/courts/${courtId}`);
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner', 'facilities'] }),
   });
 }
 

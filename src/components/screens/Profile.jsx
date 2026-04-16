@@ -32,7 +32,7 @@ const Profile = () => {
       <AuthRequired
         icon="person"
         title="Личный кабинет"
-        description="Войдите чтобы просмотреть и редактировать ваш профиль."
+        description="Войдите, чтобы просмотреть и редактировать ваш профиль."
         buttonText="Войти"
       />
     );
@@ -53,7 +53,8 @@ const Profile = () => {
     await logout();
   };
 
-  const roleLabel = user?.role === 'organizer' ? '🏢 Организатор' : '👤 Спортсмен';
+  const roleLabel = user?.role === 'organizer' ? 'Организатор' : 'Спортсмен';
+  const roleIcon = user?.role === 'organizer' ? 'storefront' : 'sports_kabaddi';
 
   return (
     <div className="min-h-screen bg-surface pb-24">
@@ -80,7 +81,8 @@ const Profile = () => {
               {user?.phone && (
                 <p className="text-sm text-on-surface-variant mt-1">{user.phone}</p>
               )}
-              <div className="inline-block px-4 py-1.5 bg-primary-fixed/20 text-primary rounded-full text-xs font-bold mt-3">
+              <div className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-primary-fixed/20 text-primary rounded-full text-xs font-bold mt-3">
+                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>{roleIcon}</span>
                 {roleLabel}
               </div>
               <div className="mt-4">

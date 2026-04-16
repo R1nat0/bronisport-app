@@ -8,21 +8,21 @@ import {
   useMyFacilities, useOwnerBookings, useOwnerStats,
   useDeleteFacility, useUpdateBookingStatus, useCreateOwnerBooking,
 } from '../../api/hooks/owner.js';
-import { useFacilitySlots } from '../../api/hooks/facilities.js';
+import { useCourtSlots } from '../../api/hooks/facilities.js';
 import { apiErrorMessage, resolveUploadUrl } from '../../api/client.js';
 import { formatPrice } from '../../utils/formatters.js';
 
 const STATUS_LABEL = {
-  pending: { label: 'Ожидает', bg: 'bg-yellow-100 text-yellow-700' },
-  confirmed: { label: 'Подтв.', bg: 'bg-green-100 text-green-700' },
-  cancelled: { label: 'Отмен.', bg: 'bg-red-50 text-red-600' },
+  pending: { label: 'Ожидает', bg: 'bg-secondary/10 text-secondary' },
+  confirmed: { label: 'Подтв.', bg: 'bg-primary-fixed/20 text-primary' },
+  cancelled: { label: 'Отмен.', bg: 'bg-surface-container-high text-on-surface-variant' },
   completed: { label: 'Завер.', bg: 'bg-surface-container-high text-on-surface' },
 };
 
 const MOD_LABEL = {
-  pending: { label: 'На модерации', bg: 'bg-yellow-100 text-yellow-700', icon: 'pending' },
-  approved: { label: 'Одобрено', bg: 'bg-green-100 text-green-700', icon: 'verified' },
-  rejected: { label: 'Отклонено', bg: 'bg-red-50 text-red-600', icon: 'cancel' },
+  pending: { label: 'На модерации', bg: 'bg-secondary/10 text-secondary', icon: 'pending' },
+  approved: { label: 'Одобрено', bg: 'bg-primary-fixed/20 text-primary', icon: 'verified' },
+  rejected: { label: 'Отклонено', bg: 'bg-surface-container-high text-on-surface-variant', icon: 'cancel' },
 };
 
 function todayIso() { return new Date().toISOString().slice(0, 10); }
@@ -121,13 +121,18 @@ function CreateBookingModal({ isOpen, onClose, facilities }) {
   const { success, error } = useAlert();
   const createBooking = useCreateOwnerBooking();
   const [facilityId, setFacilityId] = useState('');
+  const [courtId, setCourtId] = useState('');
   const [date, setDate] = useState(todayIso());
   const [startTime, setStartTime] = useState(null);
   const [duration, setDuration] = useState(1);
   const [guestName, setGuestName] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
 
-  const { data: slotsData, isLoading: slotsLoading } = useFacilitySlots(facilityId || undefined, date);
+  const selectedFac = facilities.find((f) => f.id === facilityId);
+  const courts = selectedFac?.courts ?? [];
+  const activeCourt = courtId || courts[0]?.id || '';
+
+  const { data: slotsData, isLoading: slotsLoading } = useCourtSlots(activeCourt || undefined, date);
   const slots = slotsData?.slots ?? [];
 
   const canBookBlock = (st, dur) => {
@@ -139,10 +144,10 @@ function CreateBookingModal({ isOpen, onClose, facilities }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!facilityId || !startTime || !guestName.trim()) return;
+    if (!activeCourt || !startTime || !guestName.trim()) return;
     try {
       await createBooking.mutateAsync({
-        facilityId, date, startTime, duration, guestName,
+        courtId: activeCourt, date, startTime, duration, guestName,
         guestPhone: guestPhone.trim() || undefined,
       });
       success('Бронь внесена');
@@ -154,11 +159,10 @@ function CreateBookingModal({ isOpen, onClose, facilities }) {
   };
 
   if (!isOpen) return null;
-  const selectedFac = facilities.find((f) => f.id === facilityId);
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[9998]" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/20 backdrop-blur-[20px] z-[9998]" onClick={onClose} />
       <div className="fixed inset-0 z-[9999] overflow-y-auto">
         <div className="min-h-full flex items-start justify-center p-4 pt-8 pb-8">
         <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl">
@@ -172,7 +176,7 @@ function CreateBookingModal({ isOpen, onClose, facilities }) {
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Клуб</label>
-              <select value={facilityId} onChange={(e) => { setFacilityId(e.target.value); setStartTime(null); }}
+              <select value={facilityId} onChange={(e) => { setFacilityId(e.target.value); setCourtId(''); setStartTime(null); }}
                 className="w-full px-4 py-3 rounded-xl bg-white border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-primary-fixed/50">
                 <option value="">Выберите клуб</option>
                 {facilities.filter((f) => f.moderationStatus === 'approved').map((f) => (
@@ -180,6 +184,20 @@ function CreateBookingModal({ isOpen, onClose, facilities }) {
                 ))}
               </select>
             </div>
+
+            {facilityId && courts.length > 1 && (
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Зал</label>
+                <div className="flex gap-2 flex-wrap">
+                  {courts.map((c) => (
+                    <button key={c.id} type="button" onClick={() => { setCourtId(c.id); setStartTime(null); }}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${activeCourt === c.id ? 'bg-primary-fixed text-on-primary-fixed border-transparent' : 'bg-white text-on-surface border-surface-container-high'}`}>
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {facilityId && (
               <CustomDatePicker value={date} onChange={(d) => { setDate(d); setStartTime(null); }} label="Дата" />
@@ -334,7 +352,7 @@ const OwnerDashboard = () => {
                 <p className="text-xs text-on-surface-variant mt-1">Предстоит</p>
               </div>
               <div className="bg-white rounded-2xl p-4 border border-surface-container-high text-center shadow-sm">
-                <p className="text-xl font-bold text-green-600 font-headline">{formatPrice(stats?.totalRevenue ?? 0)}</p>
+                <p className="text-xl font-bold text-primary font-headline">{formatPrice(stats?.totalRevenue ?? 0)}</p>
                 <p className="text-xs text-on-surface-variant mt-1">Доход</p>
               </div>
             </div>
@@ -451,7 +469,7 @@ const OwnerDashboard = () => {
                     <div key={b.id} className="bg-white rounded-2xl border border-surface-container-high p-4">
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-on-surface truncate">{b.facility?.name}</p>
+                          <p className="font-bold text-on-surface truncate">{b.facility?.name}{b.court?.name ? ` — ${b.court.name}` : ''}</p>
                           <p className="text-xs text-on-surface-variant mt-0.5">{b.date} • {b.startTime}–{b.endTime}</p>
                         </div>
                         <div className="flex flex-col items-end gap-1 flex-shrink-0">

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as service from '../services/favoriteService.js';
 import { requireAuth } from '../middleware/auth.js';
+import { writeLimiter } from '../middleware/rateLimits.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -13,7 +14,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-router.post('/:facilityId', async (req, res, next) => {
+router.post('/:facilityId', writeLimiter, async (req, res, next) => {
   try {
     res.status(201).json(await service.addFavorite(req.user.id, req.params.facilityId));
   } catch (err) {

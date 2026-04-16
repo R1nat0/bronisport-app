@@ -15,7 +15,7 @@ const Favorites = () => {
       <AuthRequired
         icon="favorite"
         title="Избранные места"
-        description="Войдите чтобы сохранять и просматривать вашу коллекцию избранных площадок."
+        description="Войдите, чтобы сохранять и просматривать вашу коллекцию избранных клубов."
         buttonText="Войти"
       />
     );
@@ -23,7 +23,7 @@ const Favorites = () => {
 
   return (
     <div className="min-h-screen bg-surface pb-24">
-      <Header title="Избранные места" subtitle="Ваши любимые спортивные площадки" />
+      <Header title="Избранные места" subtitle="Ваши любимые спортивные клубы" />
 
       <section className="px-4 pt-4 pb-4 space-y-4">
         {isLoading ? (
@@ -33,7 +33,7 @@ const Favorites = () => {
             {favorites.map((f) => (
               <FacilityCard
                 key={f.facilityId}
-                facility={{ ...f.facility, pricePerHour: f.facility.pricePerHour }}
+                facility={f.facility}
               />
             ))}
           </div>
@@ -42,13 +42,13 @@ const Favorites = () => {
             <div className="text-5xl mb-4">♡</div>
             <h3 className="text-lg font-bold text-on-surface mb-2">Пока нет избранных</h3>
             <p className="text-on-surface-variant text-sm mb-6">
-              Добавляй нажатием сердечка на понравившихся площадках
+              Добавляй нажатием сердечка на понравившихся клубах
             </p>
             <Link
               to="/"
               className="inline-block px-6 py-2.5 bg-primary-fixed text-on-primary-fixed font-bold rounded-xl transition-transform active:scale-95"
             >
-              Смотреть площадки
+              Смотреть клубы
             </Link>
           </div>
         )}

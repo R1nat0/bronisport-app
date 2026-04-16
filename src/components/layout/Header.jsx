@@ -15,7 +15,7 @@ const Header = ({ title, subtitle = null, highlightText = null, rightAction = nu
         <div className="flex-1">
           <h1 className="text-2xl md:text-3xl font-extrabold text-primary leading-tight mb-1 tracking-tight font-headline">
             {title} {highlightText && <br/>}
-            {highlightText && <span className="text-emerald-600">{highlightText}</span>}
+            {highlightText && <span className="text-primary-fixed">{highlightText}</span>}
           </h1>
           {subtitle && (
             <p className="text-sm text-on-surface-variant">{subtitle}</p>

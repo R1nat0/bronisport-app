@@ -16,7 +16,7 @@ const ConfirmDialog = ({
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
+        className="fixed inset-0 bg-black/20 backdrop-blur-[20px] z-40"
         onClick={onCancel}
       />
 

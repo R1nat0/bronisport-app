@@ -68,19 +68,11 @@ async function seedFacilities(owner, athlete) {
         photos: {
           create: f.photos.map((url, order) => ({ url, order })),
         },
+        courts: {
+          create: [{ name: 'Основной зал' }],
+        },
       },
     });
-
-    if (f.reviews?.length) {
-      await prisma.review.createMany({
-        data: f.reviews.map((r) => ({
-          facilityId: created.id,
-          userId: athlete.id,
-          rating: r.rating,
-          text: r.text,
-        })),
-      });
-    }
     console.log(`✓ facility ${f.name}`);
   }
 }

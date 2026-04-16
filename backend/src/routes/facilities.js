@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { z } from 'zod';
 
 import * as service from '../services/facilityService.js';
-import * as reviewService from '../services/reviewService.js';
 import { validateQuery } from '../middleware/validate.js';
 
 const router = Router();
@@ -38,17 +37,9 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-router.get('/:id/slots', validateQuery(slotsQuerySchema), async (req, res, next) => {
+router.get('/courts/:courtId/slots', validateQuery(slotsQuerySchema), async (req, res, next) => {
   try {
-    res.json(await service.getFacilitySlots(req.params.id, req.query.date));
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get('/:id/reviews', async (req, res, next) => {
-  try {
-    res.json(await reviewService.listFacilityReviews(req.params.id));
+    res.json(await service.getCourtSlots(req.params.courtId, req.query.date));
   } catch (err) {
     next(err);
   }

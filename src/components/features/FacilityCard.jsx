@@ -23,7 +23,7 @@ const FacilityCard = ({ facility, showPhoto = true }) => {
   const addFav = useAddFavorite();
   const removeFav = useRemoveFavorite();
 
-  const price = facility.pricePerHour ?? facility.price;
+  const price = facility.pricePerHour;
   const photo = facility.photo ?? facility.photos?.[0]?.url ?? facility.photos?.[0];
 
   const handleToggleFavorite = (e) => {
@@ -50,7 +50,7 @@ const FacilityCard = ({ facility, showPhoto = true }) => {
   return (
     <div
       onClick={handleCardClick}
-      className="bg-white rounded-2xl overflow-hidden shadow-sm border border-surface-container-high hover:shadow-md transition-all cursor-pointer"
+      className="bg-surface-container-lowest rounded-xl overflow-hidden shadow-[0_2px_16px_rgba(25,28,30,0.06)] hover:shadow-[0_8px_32px_rgba(25,28,30,0.1)] transition-all cursor-pointer"
     >
       <div className="relative h-40 overflow-hidden bg-gradient-to-br from-primary to-primary-fixed flex-shrink-0 flex items-center justify-center">
         {showPhoto && photo ? (
@@ -102,13 +102,13 @@ const FacilityCard = ({ facility, showPhoto = true }) => {
           )}
         </div>
 
-        <div className="mt-3 flex justify-between items-center border-t border-surface-container-high pt-3">
+        <div className="mt-3 flex justify-between items-center bg-surface-container-low/50 -mx-4 px-4 py-3 -mb-4">
           <span className="text-sm font-semibold text-primary">
             {formatPrice(price)} / час
           </span>
           <button
             onClick={handleBookingClick}
-            className="text-xs font-bold text-emerald-600 px-3 py-1 bg-emerald-50 rounded-lg active:scale-95 transition-transform"
+            className="text-xs font-bold text-primary px-3 py-1 bg-primary-fixed/20 rounded-lg active:scale-95 transition-transform"
           >
             Забронировать
           </button>

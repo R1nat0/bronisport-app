@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import Header from '../layout/Header.jsx';
 import { useAlert } from '../../context/AlertContext.jsx';
-import { useMyFacilities, useUpdateFacility } from '../../api/hooks/owner.js';
+import { useMyFacilities, useUpdateFacility, useAddCourt, useRenameCourt, useDeleteCourt } from '../../api/hooks/owner.js';
 import { api, apiErrorMessage, resolveUploadUrl } from '../../api/client.js';
+import AddressInput from '../forms/AddressInput.jsx';
 
 const SPORTS = [
   'Футбол', 'Теннис', 'Баскетбол', 'Волейбол',
@@ -20,6 +21,94 @@ const DISTRICTS = {
   'Екатеринбург': ['Центр', 'Ленинский', 'Октябрьский', 'Железнодорожный'],
   'Новосибирск': ['Центр', 'Первомайский', 'Октябрьский', 'Ленинский'],
 };
+
+function CourtRow({ court, canDelete, onDelete, onRename }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState(court.name);
+
+  const handleSave = () => {
+    if (name.trim() && name.trim() !== court.name) onRename(court.id, name.trim());
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl border border-surface-container-high">
+      {isEditing ? (
+        <input value={name} onChange={(e) => setName(e.target.value)} autoFocus
+          onBlur={handleSave}
+          onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+          className="flex-1 px-3 py-1.5 rounded-lg border border-primary-fixed focus:outline-none text-sm font-medium" />
+      ) : (
+        <span className="flex-1 font-medium text-on-surface cursor-pointer hover:text-primary transition-colors"
+          onClick={() => setIsEditing(true)}>{court.name}</span>
+      )}
+      <button onClick={() => setIsEditing(true)}
+        className="text-xs text-on-surface-variant hover:text-primary transition-colors">
+        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>edit</span>
+      </button>
+      {canDelete && (
+        <button onClick={() => onDelete(court.id)}
+          className="text-xs text-red-500 hover:text-red-700 transition-colors">
+          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>delete</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+function CourtsSection({ facilityId, courts }) {
+  const { success, error } = useAlert();
+  const addCourt = useAddCourt();
+  const renameCourt = useRenameCourt();
+  const deleteCourt = useDeleteCourt();
+  const [newName, setNewName] = useState('');
+
+  const handleAdd = async () => {
+    if (!newName.trim()) return;
+    try {
+      await addCourt.mutateAsync({ facilityId, name: newName.trim() });
+      setNewName('');
+      success('Зал добавлен');
+    } catch (err) { error(apiErrorMessage(err)); }
+  };
+
+  const handleRename = async (courtId, name) => {
+    try {
+      await renameCourt.mutateAsync({ courtId, name });
+      success('Название обновлено');
+    } catch (err) { error(apiErrorMessage(err)); }
+  };
+
+  const handleDelete = async (courtId) => {
+    try {
+      await deleteCourt.mutateAsync(courtId);
+      success('Зал удалён');
+    } catch (err) { error(apiErrorMessage(err)); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-bold text-on-surface">Залы ({courts.length})</h3>
+      {courts.map((c) => (
+        <CourtRow key={c.id} court={c} canDelete={courts.length > 1}
+          onDelete={handleDelete} onRename={handleRename} />
+      ))}
+      <div className="flex gap-2">
+        <input value={newName} onChange={(e) => setNewName(e.target.value)}
+          placeholder="Название зала"
+          className="flex-1 px-4 py-3 rounded-xl bg-white border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-primary-fixed/50"
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAdd())} />
+        <button onClick={handleAdd} disabled={!newName.trim() || addCourt.isPending}
+          className="px-4 py-3 bg-primary-fixed text-on-primary-fixed rounded-xl font-bold disabled:opacity-50 active:scale-95 transition-all">
+          {addCourt.isPending ? '…' : '+'}
+        </button>
+      </div>
+      <p className="text-xs text-on-surface-variant">
+        Нажмите на название зала, чтобы переименовать. У каждого зала своя сетка слотов.
+      </p>
+    </div>
+  );
+}
 
 const EditFacility = () => {
   const { id } = useParams();
@@ -44,6 +133,8 @@ const EditFacility = () => {
         city: facility.city,
         district: facility.district,
         address: facility.address,
+        lat: facility.lat ?? null,
+        lng: facility.lng ?? null,
         description: facility.description ?? '',
         pricePerHour: String(facility.pricePerHour),
         openTime: facility.openTime,
@@ -113,13 +204,15 @@ const EditFacility = () => {
         city: form.city,
         district: form.district,
         address: form.address,
+        lat: form.lat,
+        lng: form.lng,
         description: form.description,
         pricePerHour: Number(form.pricePerHour),
         openTime: form.openTime,
         closeTime: form.closeTime,
         status: form.status,
       });
-      success('Площадка обновлена');
+      success('Клуб обновлён');
       navigate('/owner');
     } catch (err) {
       error(apiErrorMessage(err));
@@ -190,10 +283,12 @@ const EditFacility = () => {
               </select>
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-on-surface mb-2">Адрес</label>
-            <input name="address" value={form.address} onChange={handleChange} className={inputCls} />
-          </div>
+          <AddressInput
+            value={form.address}
+            onChange={(v) => setForm((p) => ({ ...p, address: v }))}
+            onSelect={(s) => setForm((p) => ({ ...p, address: s.address, lat: s.lat, lng: s.lng }))}
+            city={form.city}
+          />
         </div>
 
         <div className="space-y-4">
@@ -274,23 +369,29 @@ const EditFacility = () => {
           )}
         </div>
 
-        <div className="flex gap-3 mt-8">
+      </form>
+
+      <div className="px-4 pb-6 max-w-2xl mx-auto space-y-8">
+        <CourtsSection facilityId={id} courts={facility.courts ?? []} />
+
+        <div className="flex gap-3">
           <button
             type="button"
             onClick={() => navigate('/owner')}
             className="flex-1 px-4 py-3 rounded-xl bg-surface-container-low border border-surface-container-high text-on-surface font-bold active:scale-95 transition-transform"
           >
-            Отмена
+            Назад
           </button>
           <button
-            type="submit"
+            type="button"
+            onClick={() => document.querySelector('form')?.requestSubmit()}
             disabled={updateFacility.isPending || !form.name || !form.sport || !form.district}
             className="flex-1 px-4 py-3 rounded-xl bg-primary-fixed text-on-primary-fixed font-bold disabled:opacity-50 active:scale-95 transition-transform"
           >
-            {updateFacility.isPending ? 'Сохранение…' : 'Сохранить'}
+            {updateFacility.isPending ? 'Сохранение…' : 'Сохранить клуб'}
           </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 };

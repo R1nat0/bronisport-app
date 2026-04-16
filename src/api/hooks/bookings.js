@@ -17,13 +17,13 @@ export function useMyBookings(status) {
 export function useCreateBooking() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ facilityId, date, startTime, duration = 1 }) => {
-      const { data } = await api.post('/bookings', { facilityId, date, startTime, duration });
+    mutationFn: async ({ courtId, date, startTime, duration = 1 }) => {
+      const { data } = await api.post('/bookings', { courtId, date, startTime, duration });
       return data;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['bookings', 'my'] });
-      qc.invalidateQueries({ queryKey: ['facility', vars.facilityId, 'slots', vars.date] });
+      qc.invalidateQueries({ queryKey: ['court'] });
     },
   });
 }

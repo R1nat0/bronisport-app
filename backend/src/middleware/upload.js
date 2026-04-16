@@ -1,29 +1,24 @@
 import multer from 'multer';
 import sharp from 'sharp';
-import path from 'node:path';
-import fs from 'node:fs';
 import { randomBytes } from 'node:crypto';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
-export const UPLOADS_DIR = path.resolve(process.cwd(), 'uploads');
-const TMP_DIR = path.resolve(process.cwd(), 'uploads', '.tmp');
-
-for (const dir of [UPLOADS_DIR, TMP_DIR]) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
-
-const tmpStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, TMP_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-    const id = randomBytes(12).toString('hex');
-    cb(null, `${Date.now()}-${id}${ext}`);
+const s3 = new S3Client({
+  endpoint: process.env.S3_ENDPOINT || 'https://storage.yandexcloud.net',
+  region: process.env.S3_REGION || 'ru-central1',
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY || '',
+    secretAccessKey: process.env.S3_SECRET_KEY || '',
   },
 });
+
+const BUCKET = process.env.S3_BUCKET || 'bronisport-photos';
+const S3_PUBLIC_URL = `${process.env.S3_ENDPOINT || 'https://storage.yandexcloud.net'}/${BUCKET}`;
 
 const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 export const uploadPhotos = multer({
-  storage: tmpStorage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024, files: 5 },
   fileFilter: (_req, file, cb) => {
     if (!ALLOWED.has(file.mimetype)) {
@@ -33,25 +28,44 @@ export const uploadPhotos = multer({
   },
 }).array('photos', 5);
 
-export async function optimizePhotos(files) {
+export async function optimizeAndUpload(files) {
   const results = [];
+
   for (const file of files) {
     const id = randomBytes(12).toString('hex');
-    const outName = `${Date.now()}-${id}.webp`;
-    const outPath = path.join(UPLOADS_DIR, outName);
+    const key = `photos/${Date.now()}-${id}.webp`;
 
-    await sharp(file.path)
+    const buffer = await sharp(file.buffer)
       .resize({ width: 1920, height: 1440, fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 85 })
-      .toFile(outPath);
+      .toBuffer();
 
-    fs.unlinkSync(file.path);
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: BUCKET,
+        Key: key,
+        Body: buffer,
+        ContentType: 'image/webp',
+      })
+    );
 
     results.push({
-      filename: outName,
-      url: `/uploads/${outName}`,
-      size: fs.statSync(outPath).size,
+      key,
+      url: `${S3_PUBLIC_URL}/${key}`,
+      size: buffer.length,
     });
   }
+
   return results;
+}
+
+export async function deleteFromS3(url) {
+  if (!url || !url.includes(BUCKET)) return;
+  const key = url.split(`/${BUCKET}/`)[1];
+  if (!key) return;
+  try {
+    await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
+  } catch {
+    // file may already be gone
+  }
 }

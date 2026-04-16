@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 const AuthRequired = ({ 
   icon = 'lock',
   title = 'Требуется вход',
-  description = 'Войдите чтобы получить доступ к этой функции',
+  description = 'Войдите, чтобы получить доступ к этой функции',
   buttonText = 'Войти'
 }) => {
   const { setIsAuthModalOpen } = useAuth();

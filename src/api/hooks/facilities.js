@@ -25,23 +25,12 @@ export function useFacility(id) {
   });
 }
 
-export function useFacilitySlots(id, date) {
+export function useCourtSlots(courtId, date) {
   return useQuery({
-    queryKey: ['facility', id, 'slots', date],
-    enabled: !!id && !!date,
+    queryKey: ['court', courtId, 'slots', date],
+    enabled: !!courtId && !!date,
     queryFn: async () => {
-      const { data } = await api.get(`/facilities/${id}/slots`, { params: { date } });
-      return data;
-    },
-  });
-}
-
-export function useFacilityReviews(id) {
-  return useQuery({
-    queryKey: ['facility', id, 'reviews'],
-    enabled: !!id,
-    queryFn: async () => {
-      const { data } = await api.get(`/facilities/${id}/reviews`);
+      const { data } = await api.get(`/facilities/courts/${courtId}/slots`, { params: { date } });
       return data;
     },
   });

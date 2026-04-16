@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useAlert } from '../../context/AlertContext.jsx';
-import { useFacility, useFacilitySlots } from '../../api/hooks/facilities.js';
+import { useFacility, useCourtSlots } from '../../api/hooks/facilities.js';
 import { useCreateBooking } from '../../api/hooks/bookings.js';
 import { useAddFavorite, useIsFavorite, useRemoveFavorite } from '../../api/hooks/favorites.js';
 import { apiErrorMessage, resolveUploadUrl } from '../../api/client.js';
 import { formatPrice } from '../../utils/formatters.js';
 import CustomDatePicker from '../forms/CustomDatePicker.jsx';
+import StaticMap from '../features/StaticMap.jsx';
 
 function todayIso() {
   return new Date().toISOString().split('T')[0];
@@ -20,10 +21,15 @@ const FacilityDetail = () => {
   const { error: showError, success: showSuccess } = useAlert();
 
   const { data: facility, isLoading, isError } = useFacility(id);
+  const [selectedCourtId, setSelectedCourtId] = useState(null);
   const [selectedDate, setSelectedDate] = useState(todayIso());
-  const { data: slotsData, isLoading: slotsLoading } = useFacilitySlots(id, selectedDate);
   const [selectedTime, setSelectedTime] = useState(null);
   const [duration, setDuration] = useState(1);
+
+  const courts = facility?.courts ?? [];
+  const activeCourt = selectedCourtId || courts[0]?.id;
+
+  const { data: slotsData, isLoading: slotsLoading } = useCourtSlots(activeCourt, selectedDate);
 
   const createBooking = useCreateBooking();
   const isLiked = useIsFavorite(id);
@@ -72,7 +78,7 @@ const FacilityDetail = () => {
     }
     try {
       await createBooking.mutateAsync({
-        facilityId: id,
+        courtId: activeCourt,
         date: selectedDate,
         startTime: selectedTime,
         duration,
@@ -96,7 +102,7 @@ const FacilityDetail = () => {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center">
         <div className="text-center">
-          <p className="text-lg font-bold text-on-surface mb-4">Площадка не найдена</p>
+          <p className="text-lg font-bold text-on-surface mb-4">Клуб не найден</p>
           <button
             onClick={() => navigate('/')}
             className="px-6 py-2 bg-primary-fixed text-on-primary-fixed rounded-xl font-headline font-bold"
@@ -108,12 +114,13 @@ const FacilityDetail = () => {
     );
   }
 
-  const mainPhoto = facility.photos?.[0]?.url;
+  const photos = facility.photos ?? [];
+  const mainPhoto = photos[0]?.url;
   const totalPrice = facility.pricePerHour * duration;
 
   return (
     <div className="bg-surface min-h-screen">
-      <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-surface-container-high px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-[16px] px-4 py-3 flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}
           className="p-2 text-on-surface hover:bg-surface-container rounded-lg transition-colors"
@@ -141,18 +148,34 @@ const FacilityDetail = () => {
 
       <div>
         <div className="px-4 pt-4 pb-6">
-          <div className="relative h-56 md:h-80 rounded-2xl overflow-hidden bg-gradient-to-br from-primary to-primary-fixed flex items-center justify-center">
-            {mainPhoto ? (
-              <img src={resolveUploadUrl(mainPhoto)} alt={facility.name} className="w-full h-full object-cover" />
-            ) : (
-              <span className="material-symbols-outlined text-6xl text-white/40">
-                sports_kabaddi
-              </span>
-            )}
-            <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-primary">
-              {facility.sport}
+          {photos.length > 1 ? (
+            <div className="flex gap-3 overflow-x-auto hide-scrollbar snap-x snap-mandatory pb-2">
+              {photos.map((p, i) => (
+                <div key={p.id ?? i} className="flex-none w-[80%] md:w-[45%] snap-start">
+                  <div className="relative aspect-[3/2] rounded-2xl overflow-hidden bg-surface-container-high">
+                    <img src={resolveUploadUrl(p.url)} alt={`${facility.name} ${i + 1}`}
+                      className="w-full h-full object-cover" loading={i > 0 ? 'lazy' : undefined} />
+                    {i === 0 && (
+                      <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-primary">
+                        {facility.sport}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+          ) : (
+            <div className="relative aspect-[3/2] md:aspect-[2/1] rounded-2xl overflow-hidden bg-gradient-to-br from-primary to-primary-fixed flex items-center justify-center">
+              {mainPhoto ? (
+                <img src={resolveUploadUrl(mainPhoto)} alt={facility.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="material-symbols-outlined text-6xl text-white/40">sports_kabaddi</span>
+              )}
+              <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-primary">
+                {facility.sport}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="px-4 md:px-6 grid grid-cols-12 gap-6 md:gap-12 pb-24 md:pb-12">
@@ -162,15 +185,10 @@ const FacilityDetail = () => {
                 {facility.name}
               </h1>
               <div className="flex flex-wrap items-center gap-4 text-on-surface-variant font-medium">
-                {facility.rating != null && (
+                {courts.length > 0 && (
                   <div className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-amber-500 text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      star
-                    </span>
-                    <span className="text-on-surface font-bold">
-                      {facility.rating.toFixed ? facility.rating.toFixed(1) : facility.rating}
-                    </span>
-                    <span className="text-sm">({facility.reviewsCount ?? 0} отзывов)</span>
+                    <span className="material-symbols-outlined text-primary">sports_kabaddi</span>
+                    <span className="text-sm">{courts.length} {courts.length === 1 ? 'зал' : courts.length < 5 ? 'зала' : 'залов'}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-1">
@@ -186,45 +204,26 @@ const FacilityDetail = () => {
 
             {facility.description && (
               <div className="space-y-4">
-                <h2 className="text-xl md:text-2xl font-extrabold font-headline">О площадке</h2>
+                <h2 className="text-xl md:text-2xl font-extrabold font-headline">О клубе</h2>
                 <p className="text-base md:text-lg leading-relaxed text-on-surface-variant">
                   {facility.description}
                 </p>
               </div>
             )}
 
-            {facility.reviews?.length > 0 && (
-              <div className="space-y-6 pt-6 border-t border-outline">
-                <h2 className="text-xl md:text-2xl font-extrabold font-headline">Отзывы</h2>
-                {facility.reviews.slice(0, 5).map((review) => (
-                  <div key={review.id} className="p-4 md:p-6 bg-white rounded-2xl border border-surface-container-high">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-primary-fixed/20 flex items-center justify-center font-bold text-xs text-primary">
-                          {review.user?.name?.[0] ?? '?'}
-                        </div>
-                        <div>
-                          <p className="font-bold text-sm">{review.user?.name ?? 'Пользователь'}</p>
-                          <p className="text-xs text-on-surface-variant">
-                            {new Date(review.createdAt).toLocaleDateString('ru-RU')}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-0.5">
-                        {[...Array(5)].map((_, i) => (
-                          <span
-                            key={i}
-                            className="material-symbols-outlined text-amber-500 text-sm"
-                            style={{ fontVariationSettings: i < review.rating ? "'FILL' 1" : "'FILL' 0" }}
-                          >
-                            star
-                          </span>
-                        ))}
-                      </div>
+            <StaticMap lat={facility.lat} lng={facility.lng} name={facility.name} />
+
+            {courts.length > 1 && (
+              <div className="space-y-4 pt-6 border-t border-outline">
+                <h2 className="text-xl md:text-2xl font-extrabold font-headline">Залы</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {courts.map((c) => (
+                    <div key={c.id} className="p-4 bg-white rounded-xl border border-surface-container-high text-center">
+                      <span className="material-symbols-outlined text-2xl text-primary mb-2 block">sports_kabaddi</span>
+                      <span className="font-bold text-sm text-on-surface">{c.name}</span>
                     </div>
-                    <p className="text-on-surface-variant text-sm italic">"{review.text}"</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -253,7 +252,7 @@ const FacilityDetail = () => {
                       <span className="material-symbols-outlined text-4xl text-on-surface-variant/40 block">lock</span>
                       <p className="font-bold text-on-surface">Требуется вход</p>
                       <p className="text-xs text-on-surface-variant leading-relaxed">
-                        Войдите чтобы забронировать площадку
+                        Войдите чтобы забронировать клуб
                       </p>
                     </div>
                   </div>
@@ -266,6 +265,30 @@ const FacilityDetail = () => {
                 </>
               ) : (
                 <>
+                  {courts.length > 1 && (
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+                        Выберите зал
+                      </label>
+                      <div className="flex gap-2 flex-wrap">
+                        {courts.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => { setSelectedCourtId(c.id); setSelectedTime(null); }}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${
+                              activeCourt === c.id
+                                ? 'bg-primary-fixed text-on-primary-fixed border-transparent'
+                                : 'bg-white text-on-surface border-surface-container-high hover:border-primary-fixed'
+                            }`}
+                          >
+                            {c.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <CustomDatePicker
                     value={selectedDate}
                     onChange={(d) => {
@@ -367,7 +390,7 @@ const FacilityDetail = () => {
                 </div>
                 <div className="flex-1">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    Менеджер площадки
+                    Менеджер клуба
                   </p>
                   <p className="font-bold text-sm text-on-surface">{facility.owner.name}</p>
                 </div>

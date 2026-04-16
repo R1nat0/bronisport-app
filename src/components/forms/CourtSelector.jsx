@@ -13,7 +13,7 @@ const CourtSelector = ({
   return (
     <div>
       <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3 block">
-        Выберите корт/площадку
+        Выберите зал
       </label>
 
       <div className="space-y-2">

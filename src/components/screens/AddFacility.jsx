@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../layout/Header.jsx';
 import { useAlert } from '../../context/AlertContext.jsx';
 import { useCreateFacility } from '../../api/hooks/owner.js';
+import AddressInput from '../forms/AddressInput.jsx';
 import { api, apiErrorMessage } from '../../api/client.js';
 
 const SPORTS = [
@@ -38,6 +39,8 @@ const AddFacility = () => {
     city: 'Москва',
     district: '',
     address: '',
+    lat: null,
+    lng: null,
     pricePerHour: '',
     description: '',
     openTime: '08:00',
@@ -77,7 +80,7 @@ const AddFacility = () => {
             headers: { 'Content-Type': 'multipart/form-data' },
           });
         } catch (uploadErr) {
-          error(`Площадка создана, но фото не загрузились: ${apiErrorMessage(uploadErr)}`);
+          error(`Клуб создан, но фото не загрузились: ${apiErrorMessage(uploadErr)}`);
           navigate('/owner');
           return;
         } finally {
@@ -85,7 +88,7 @@ const AddFacility = () => {
         }
       }
 
-      success('Площадка отправлена на модерацию');
+      success('Клуб отправлен на модерацию');
       navigate('/owner');
     } catch (err) {
       error(apiErrorMessage(err));
@@ -104,18 +107,18 @@ const AddFacility = () => {
 
   return (
     <div className="min-h-screen bg-surface pb-6">
-      <Header title="Новая площадка" showBack onBack={() => navigate('/owner')} />
+      <Header title="Новый клуб" showBack onBack={() => navigate('/owner')} />
 
       <form onSubmit={handleSubmit} className="px-4 pt-6 pb-6 space-y-6 max-w-2xl mx-auto">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800">
-          После создания площадка отправится на модерацию. Как только её одобрят — она появится в публичном списке.
+        <div className="bg-secondary/5 rounded-xl p-4 text-sm text-secondary">
+          После создания клуб отправится на модерацию. Как только его одобрят — он появится в публичном списке.
         </div>
 
         <div className="space-y-4">
           <h3 className="text-sm font-bold text-on-surface">Основная информация</h3>
 
           <div>
-            <label className="block text-xs font-semibold text-on-surface mb-2">Название площадки</label>
+            <label className="block text-xs font-semibold text-on-surface mb-2">Название клуба</label>
             <input
               type="text"
               name="name"
@@ -196,17 +199,13 @@ const AddFacility = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-on-surface mb-2">Адрес</label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              placeholder="ул. Ленина, 15"
-              className="w-full px-4 py-3 rounded-xl bg-white border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-primary-fixed/50"
-            />
-          </div>
+          <AddressInput
+            value={formData.address}
+            onChange={(v) => setFormData((p) => ({ ...p, address: v }))}
+            onSelect={(s) => setFormData((p) => ({ ...p, address: s.address, lat: s.lat, lng: s.lng }))}
+            city={formData.city}
+            placeholder="ул. Ленина, 15"
+          />
         </div>
 
         <div className="space-y-4">

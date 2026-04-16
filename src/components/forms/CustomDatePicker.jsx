@@ -1,5 +1,12 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 
+function toYmd(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 const CustomDatePicker = ({
   value,
   onChange,
@@ -64,7 +71,7 @@ const CustomDatePicker = ({
   const isDateAvailable = (day) => {
     if (isOutOfRange(day)) return false;
     const date = new Date(displayMonth.getFullYear(), displayMonth.getMonth(), day);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toYmd(date);
     return availableSlots.length === 0 || availableSlots.some(slot => slot.date === dateStr && slot.available);
   };
 
@@ -78,7 +85,7 @@ const CustomDatePicker = ({
   const isSelected = (day) => {
     if (!day || !value) return false;
     const date = new Date(displayMonth.getFullYear(), displayMonth.getMonth(), day);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toYmd(date);
     return dateStr === value;
   };
 
@@ -90,7 +97,7 @@ const CustomDatePicker = ({
   const handleDateSelect = (day) => {
     if (!day) return;
     const date = new Date(displayMonth.getFullYear(), displayMonth.getMonth(), day);
-    onChange(date.toISOString().split('T')[0]);
+    onChange(toYmd(date));
     setIsOpen(false);
   };
 

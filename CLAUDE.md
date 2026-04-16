@@ -4,66 +4,107 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**BroniSport** (брониспорт) — a frontend-only MVP for a sports facility booking platform (courts, gyms, venues). Single-page React app with no backend; all data is mocked.
+**BroniSport** (брониспорт) — full-stack sports facility booking platform. React frontend + Node.js/Express backend + PostgreSQL. Two roles: athlete (booking, favorites, reviews) and organizer (facility management, booking management).
 
 ## Commands
 
+### Frontend (root)
 ```bash
-npm run dev      # Vite dev server on http://localhost:3000 (auto-opens browser)
+npm run dev      # Vite dev server on http://localhost:3000
 npm run build    # Production build to /dist
-npm run preview  # Preview the production build
 ```
 
-There are **no tests, no linter, and no typechecker** configured. Do not suggest `npm test` / `npm run lint` — they don't exist. If adding tests or lint config, update this file.
+### Backend (backend/)
+```bash
+npm run dev              # Node --watch on http://localhost:4000
+npm run start            # Production start
+npm run prisma:migrate   # Run migrations
+npm run prisma:studio    # DB GUI
+npm run db:seed          # Seed test data (2 users + 12 facilities)
+npm run moderate:list    # List pending facilities
+npm run moderate:approve -- <id>
+npm run moderate:reject  -- <id> --reason="..."
+```
 
-Docker: the repo ships a multi-stage Dockerfile that builds with Node 20-alpine and serves `/dist` via `serve` on port 3000.
+### Full stack
+```bash
+./start-dev.sh           # Docker Postgres + backend + frontend in one command
+./start-dev.sh --fresh   # Wipe DB and reseed
+```
+
+There are **no tests and no linter** configured.
 
 ## Architecture
 
-### Role-based routing (critical to understand)
+### Tech stack
+- **Frontend**: React 18, Vite, Tailwind CSS, React Query, Axios
+- **Backend**: Node.js 20, Express, Prisma ORM, PostgreSQL 15
+- **Auth**: JWT (access 15m + refresh 7d in HTTPOnly cookie), bcrypt
+- **Storage**: Yandex S3 (Object Storage) for photos, sharp for optimization
+- **Email**: Resend (password reset codes)
+- **Deploy**: Docker Compose (postgres + api + frontend)
 
-[src/router.jsx](src/router.jsx) renders **completely different route trees** based on the authenticated user's role from `useAuth()`:
+### Role-based routing
 
-- **Admin** → only `/admin`; every other path redirects there.
-- **Owner** → only `/owner` and `/owner/add-facility`; other paths redirect.
-- **Client / Guest** → the main app inside `<Layout>` (Discover, FacilityDetail, Bookings, Favorites, Profile).
+[src/router.jsx](src/router.jsx) renders different route trees based on `useAuth().isOwner`:
 
-Owner and Admin screens do **not** use the `Layout` wrapper, so they have no TopNav/BottomNav. When adding an owner/admin screen, either add it under the role's branch in `router.jsx` or wrap it in its own layout — it will not inherit the client shell.
+- **Organizer** → `/owner` (dashboard), `/owner/add-facility`, `/owner/edit-facility/:id`
+- **Athlete / Guest** → `<Layout>` with Discover, FacilityDetail, Bookings, Favorites, Profile
 
-### State: three stacked Context providers
+No admin UI — moderation is done via CLI scripts (`npm run moderate:*`).
 
-[src/App.jsx](src/App.jsx) wraps the app in this order: `AlertProvider` → `AuthProvider` → `BookingProvider`. `BookingContext` depends on `useAuth()`, so provider order matters — don't rearrange.
+### State management
 
-Consumer hooks:
-- `useAuth()` — `user`, `isAuthenticated`, `isAdmin`, `isOwner`, `login`, `logout`, favorites
-- `useBookings()` — `bookings`, `createBooking`, `cancelBooking`
-- `useAlert()` — `success`, `error`, `warning` toasts
+- **AuthContext** ([src/context/AuthContext.jsx](src/context/AuthContext.jsx)) — user session, login/register/logout via API, token refresh
+- **AlertContext** — toast notifications
+- **React Query** — all data fetching via hooks in [src/api/hooks/](src/api/hooks/)
 
-### Data layer
+No BookingContext or local mock data — everything goes through the backend API.
 
-All data lives in [src/utils/mockData.js](src/utils/mockData.js): 12 hardcoded facilities, 4 test users, sample bookings, plus helpers `generateSlots()`, `findUserByEmail()`, `filterFacilities()`. Time slots are randomly generated per facility for 14 days, 8am–10pm.
+### API client
 
-Persistence is **localStorage only** — user session, favorites, and bookings. No API, no backend calls. The "Add Facility" form does not persist; it's UI-only (as are admin approve/reject actions). Keep this in mind before telling the user a feature "works end-to-end."
+[src/api/client.js](src/api/client.js) — Axios instance with:
+- Access token in memory (not localStorage)
+- Auto-refresh on 401 via HTTPOnly cookie (single-flight)
+- `resolveUploadUrl()` for S3/local photo URLs
 
-### Auth model (important caveat)
+### Backend structure
 
-Login is **email-only, no password** — `findUserByEmail()` returns a user object if the email matches a mock. Role is determined by which test email is used:
+```
+backend/src/
+├── routes/        # Express routers (auth, facilities, bookings, favorites, reviews, owner, users)
+├── services/      # Business logic (one service per domain)
+├── middleware/     # auth (JWT), validate (Zod), upload (S3 + sharp)
+├── utils/         # httpError, jwt helpers
+├── scripts/       # seed, moderate (CLI)
+└── prisma.js      # PrismaClient singleton
+```
 
-- `client@example.com` — client
-- `owner@example.com` — owner
-- `admin@sport.ru` — admin
+### Key business rules
 
-This is intentional for the MVP but means any "auth" changes should not assume real credential checks exist.
+- Facilities require moderation (`isApproved: false` on create, approve via CLI)
+- Bookings: 1–4 hour duration, UNIQUE constraint on `(facilityId, date, startTime)` prevents double-booking, overlap check for multi-hour bookings
+- Bookings limited to 14 days ahead, past slots hidden
+- Reviews: only after a completed/past booking
+- Organizer can create guest bookings (phone bookings) with `guestName`/`guestPhone`
+- Photos optimized via sharp (→ 1920×1440 webp q85) and stored in Yandex S3
 
 ### Design system
 
-Tailwind config in [tailwind.config.js](tailwind.config.js) defines custom Material Design 3-inspired tokens. The design language avoids 1px borders — use tonal background nesting (`surface`, `surface-container`) instead. Glassmorphism (blur + transparency) is used for modals. Mobile-first; the client shell has a fixed `BottomNav`.
+Tailwind with Material Design 3-inspired tokens. No 1px borders — tonal nesting (`surface`, `surface-container`). Mobile-first. Fonts: Manrope (headings), Inter (body). Icons: Google Material Symbols via CDN.
 
-Fonts: **Manrope** for headings, **Inter** for body. Icons are Google Material Symbols loaded via CDN in [index.html](index.html).
+## Environment variables
 
-## Known gotchas
+### Frontend (.env)
+```
+VITE_API_URL=http://localhost:4000/api
+```
 
-- `Layout.jsx` persists scroll position via refs — be careful when changing its structure.
-- `BookingContext` imports `useAuth`, creating tight coupling; don't try to use it outside `AuthProvider`.
-- External images come from Unsplash URLs in mock data — they're not optimized and not bundled.
-- The project uses plain JavaScript (JSX), not TypeScript. Don't add `.ts`/`.tsx` files without converting config.
+### Backend (backend/.env)
+```
+DATABASE_URL, PORT, NODE_ENV
+JWT_ACCESS_SECRET, JWT_REFRESH_SECRET
+CORS_ORIGIN
+S3_ENDPOINT, S3_REGION, S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY
+RESEND_API_KEY, RESEND_FROM
+```

@@ -6,7 +6,7 @@ const TopNav = () => {
   const { isAuthenticated, setIsAuthModalOpen } = useAuth();
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-sm border-b border-surface-container-high px-4 py-3 flex justify-between items-center">
+    <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-[16px] px-4 py-3 flex justify-between items-center">
       <Link to="/" className="text-xl font-black text-primary tracking-tighter font-headline">
         Брониспорт
       </Link>

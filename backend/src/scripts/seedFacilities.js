@@ -10,9 +10,7 @@ export const FACILITIES_SEED = [
       'Современный спортивный комплекс с профессиональным стадионом и трибунами. Идеален для футбола, тренировок и турниров.',
     openTime: '08:00',
     closeTime: '23:00',
-    photos: [
-      'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&h=600&fit=crop',
-    ],
+    photos: [],
     reviews: [
       { author: 'Иван', rating: 5, text: 'Отличное место! Чистая площадка' },
       { author: 'Мария', rating: 4, text: 'Хорошо, но дороговато' },
@@ -29,7 +27,7 @@ export const FACILITIES_SEED = [
     description: 'Профессиональный теннисный клуб с 4 кортами, тренерами и раздевалками.',
     openTime: '09:00',
     closeTime: '22:00',
-    photos: ['https://images.unsplash.com/photo-1554304891-baf21f9a96a3?w=800&h=600&fit=crop'],
+    photos: [],
     reviews: [
       { author: 'Алексей', rating: 5, text: 'Шикарные корты!' },
       { author: 'Елена', rating: 4, text: 'Всё нравится, но дорого' },
@@ -45,7 +43,7 @@ export const FACILITIES_SEED = [
     description: 'Современный баскетбольный зал с профессиональным паркетом. Раздевалки и душевые.',
     openTime: '07:00',
     closeTime: '23:00',
-    photos: ['https://images.unsplash.com/photo-1546519638-68711109d298?w=800&h=600&fit=crop'],
+    photos: [],
     reviews: [
       { author: 'Максим', rating: 4, text: 'Хороший паркет' },
       { author: 'Данила', rating: 4, text: 'Всё чётко' },
@@ -61,7 +59,7 @@ export const FACILITIES_SEED = [
     description: 'Просторный волейбольный центр с несколькими площадками.',
     openTime: '10:00',
     closeTime: '22:00',
-    photos: ['https://images.unsplash.com/photo-1624526267942-ab67cb38121d?w=800&h=600&fit=crop'],
+    photos: [],
     reviews: [{ author: 'Татьяна', rating: 5, text: 'Отличное место для тренировок!' }],
   },
   {
@@ -74,7 +72,7 @@ export const FACILITIES_SEED = [
     description: 'Уютный бадминтонный клуб с 3 площадками.',
     openTime: '09:00',
     closeTime: '21:00',
-    photos: ['https://images.unsplash.com/photo-1599487945787-4b7a36f3d1c2?w=800&h=600&fit=crop'],
+    photos: [],
     reviews: [{ author: 'Виталий', rating: 4, text: 'Чистенько, уютно' }],
   },
   {
@@ -87,7 +85,7 @@ export const FACILITIES_SEED = [
     description: 'Классический спортивный зал. Надёжное место для тренировок.',
     openTime: '06:00',
     closeTime: '22:00',
-    photos: ['https://images.unsplash.com/photo-1546519638-68711109d298?w=800&h=600&fit=crop'],
+    photos: [],
     reviews: [{ author: 'Сергей', rating: 4, text: 'Немного старое, но функционально' }],
   },
   {
@@ -100,7 +98,7 @@ export const FACILITIES_SEED = [
     description: 'Премиальный теннисный центр в центре Санкт-Петербурга. 8 кортов.',
     openTime: '08:00',
     closeTime: '23:00',
-    photos: ['https://images.unsplash.com/photo-1554304891-baf21f9a96a3?w=800&h=600&fit=crop'],
+    photos: [],
     reviews: [{ author: 'Ирина', rating: 5, text: 'Премиум уровень!' }],
   },
   {
@@ -113,7 +111,7 @@ export const FACILITIES_SEED = [
     description: 'Спортивная база с естественным и искусственным покрытием.',
     openTime: '09:00',
     closeTime: '20:00',
-    photos: ['https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&h=600&fit=crop'],
+    photos: [],
     reviews: [{ author: 'Булат', rating: 4, text: 'Хорошая база' }],
   },
   {
@@ -126,7 +124,7 @@ export const FACILITIES_SEED = [
     description: 'Профессиональный хоккейный дворец с ледяной ареной.',
     openTime: '08:00',
     closeTime: '23:00',
-    photos: ['https://images.unsplash.com/photo-1472457897821-70d3819ecbbe?w=800&h=600&fit=crop'],
+    photos: [],
     reviews: [
       { author: 'Павел', rating: 5, text: 'Отличная ледяная арена' },
       { author: 'Денис', rating: 5, text: 'Супер площадка!' },
@@ -142,7 +140,7 @@ export const FACILITIES_SEED = [
     description: 'Современный сквош центр с 5 кортами.',
     openTime: '09:00',
     closeTime: '21:00',
-    photos: ['https://images.unsplash.com/photo-1599487945787-4b7a36f3d1c2?w=800&h=600&fit=crop'],
+    photos: [],
     reviews: [{ author: 'Олег', rating: 5, text: 'Отличные корты' }],
   },
   {
@@ -155,7 +153,7 @@ export const FACILITIES_SEED = [
     description: 'Любительский клуб с 8 столами.',
     openTime: '10:00',
     closeTime: '22:00',
-    photos: ['https://images.unsplash.com/photo-1599487945787-4b7a36f3d1c2?w=800&h=600&fit=crop'],
+    photos: [],
     reviews: [{ author: 'Иван', rating: 4, text: 'Хороший клуб' }],
   },
   {
@@ -168,7 +166,7 @@ export const FACILITIES_SEED = [
     description: 'Волейбольный клуб в историческом центре. Две площадки.',
     openTime: '09:00',
     closeTime: '21:00',
-    photos: ['https://images.unsplash.com/photo-1624526267942-ab67cb38121d?w=800&h=600&fit=crop'],
+    photos: [],
     reviews: [{ author: 'Ирина', rating: 5, text: 'Отличные условия' }],
   },
 ];

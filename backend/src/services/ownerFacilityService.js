@@ -1,5 +1,6 @@
 import { prisma } from '../prisma.js';
 import { forbidden, notFound } from '../utils/httpError.js';
+import { deleteFromS3 } from '../middleware/upload.js';
 
 function moderationStatus(f) {
   if (f.isApproved) return 'approved';
@@ -15,7 +16,10 @@ function enrich(f) {
 export async function listMyFacilities(ownerId) {
   const rows = await prisma.facility.findMany({
     where: { ownerId },
-    include: { photos: { orderBy: { order: 'asc' } } },
+    include: {
+      photos: { orderBy: { order: 'asc' } },
+      courts: { select: { id: true, name: true }, orderBy: { createdAt: 'asc' } },
+    },
     orderBy: { createdAt: 'desc' },
   });
   return rows.map(enrich);
@@ -24,7 +28,10 @@ export async function listMyFacilities(ownerId) {
 export async function getMyFacility(ownerId, id) {
   const f = await prisma.facility.findFirst({
     where: { id, ownerId },
-    include: { photos: { orderBy: { order: 'asc' } } },
+    include: {
+      photos: { orderBy: { order: 'asc' } },
+      courts: { select: { id: true, name: true }, orderBy: { createdAt: 'asc' } },
+    },
   });
   if (!f) throw notFound('Facility not found');
   return enrich(f);
@@ -40,13 +47,19 @@ export async function createFacility(ownerId, data) {
       district: data.district,
       address: data.address,
       description: data.description ?? '',
+      lat: data.lat ?? null,
+      lng: data.lng ?? null,
       pricePerHour: data.pricePerHour,
       openTime: data.openTime ?? '08:00',
       closeTime: data.closeTime ?? '22:00',
       status: 'active',
       isApproved: false,
+      courts: { create: [{ name: 'Основной зал' }] },
     },
-    include: { photos: true },
+    include: {
+      photos: true,
+      courts: { select: { id: true, name: true }, orderBy: { createdAt: 'asc' } },
+    },
   });
   return enrich(created);
 }
@@ -91,5 +104,6 @@ export async function deletePhoto(ownerId, facilityId, photoId) {
   const photo = await prisma.facilityPhoto.findUnique({ where: { id: photoId } });
   if (!photo || photo.facilityId !== facilityId) throw notFound('Photo not found');
   await prisma.facilityPhoto.delete({ where: { id: photoId } });
+  await deleteFromS3(photo.url);
   return { ok: true };
 }

@@ -5,7 +5,7 @@ import * as facilityService from '../services/ownerFacilityService.js';
 import * as bookingService from '../services/ownerBookingService.js';
 import { validateBody, validateQuery } from '../middleware/validate.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { uploadPhotos, optimizePhotos } from '../middleware/upload.js';
+import { uploadPhotos, optimizeAndUpload, deleteFromS3 } from '../middleware/upload.js';
 import { badRequest } from '../utils/httpError.js';
 
 const router = Router();
@@ -19,6 +19,8 @@ const createFacilitySchema = z.object({
   city: z.string().trim().min(1).max(80),
   district: z.string().trim().min(1).max(80),
   address: z.string().trim().min(1).max(200),
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
   description: z.string().trim().max(2000).optional(),
   pricePerHour: z.coerce.number().int().positive(),
   openTime: z.string().regex(timeRe).default('08:00'),
@@ -40,8 +42,12 @@ const bookingStatusSchema = z.object({
   status: z.enum(['confirmed', 'cancelled', 'completed']),
 });
 
+const courtSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+});
+
 const createBookingSchema = z.object({
-  facilityId: z.string().min(1),
+  courtId: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   startTime: z.string().regex(timeRe),
   duration: z.coerce.number().int().min(1).max(4).default(1),
@@ -92,6 +98,51 @@ router.delete('/facilities/:id', async (req, res, next) => {
   }
 });
 
+// ----------------- courts -----------------
+
+router.post('/facilities/:id/courts', validateBody(courtSchema), async (req, res, next) => {
+  try {
+    await facilityService.getMyFacility(req.user.id, req.params.id);
+    const court = await import('../prisma.js').then(({ prisma }) =>
+      prisma.court.create({ data: { facilityId: req.params.id, name: req.body.name } })
+    );
+    res.status(201).json(court);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/courts/:courtId', validateBody(courtSchema), async (req, res, next) => {
+  try {
+    const { prisma } = await import('../prisma.js');
+    const court = await prisma.court.findUnique({
+      where: { id: req.params.courtId },
+      include: { facility: { select: { ownerId: true } } },
+    });
+    if (!court || court.facility.ownerId !== req.user.id) return next(new Error('Not found'));
+    const updated = await prisma.court.update({ where: { id: req.params.courtId }, data: { name: req.body.name } });
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/courts/:courtId', async (req, res, next) => {
+  try {
+    const { prisma } = await import('../prisma.js');
+    const court = await prisma.court.findUnique({
+      where: { id: req.params.courtId },
+      include: { facility: { select: { ownerId: true } } },
+    });
+    if (!court) return next(new Error('Court not found'));
+    if (court.facility.ownerId !== req.user.id) return next(new Error('Not your court'));
+    await prisma.court.delete({ where: { id: req.params.courtId } });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ----------------- photos -----------------
 
 function runUpload(req, res, next) {
@@ -106,8 +157,8 @@ router.post('/facilities/:id/photos', runUpload, async (req, res, next) => {
     if (!req.files || req.files.length === 0) {
       throw badRequest('No files uploaded (field name must be "photos")');
     }
-    const optimized = await optimizePhotos(req.files);
-    const urls = optimized.map((o) => o.url);
+    const uploaded = await optimizeAndUpload(req.files);
+    const urls = uploaded.map((o) => o.url);
     const photos = await facilityService.addPhotos(req.user.id, req.params.id, urls);
     res.status(201).json(photos);
   } catch (err) {
