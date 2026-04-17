@@ -48,6 +48,8 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:?set VITE_API_URL}
+        VITE_DADATA_TOKEN: ${VITE_DADATA_TOKEN:-}
+        VITE_YANDEX_MAPS_KEY: ${VITE_YANDEX_MAPS_KEY:-}
     container_name: bronisport_web
     restart: unless-stopped
     depends_on:
